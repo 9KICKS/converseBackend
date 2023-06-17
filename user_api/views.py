@@ -1,6 +1,8 @@
-from django.contrib.auth import get_user_model, login, logout
+from django.contrib.auth import get_user_model, login
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.views import APIView
+from .models import AppUser
+from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
 from .serializers import UserRegisterSerializer, UserLoginSerializer, UserSerializer
 from rest_framework import permissions, status
@@ -8,6 +10,56 @@ from .validations import custom_validation, validate_email, validate_password
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.models import User
+from django.http import JsonResponse
+
+
+class CustomPasswordChangeView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        try:
+            userId = request.data.get('userId')
+            token = request.data.get('token')
+            user = AppUser.objects.get(pk=userId)
+        except AppUser.DoesNotExist:
+            return JsonResponse({"success": False, "message": "Invalid user."})
+
+        token_generator = default_token_generator
+        if not token_generator.check_token(user, token):
+            return JsonResponse({"success": False, "message": "Invalid token."})
+
+        password = request.data.get('password')
+        user.set_password(password)
+        user.save()
+        return JsonResponse({"success": True, "message": "Password reset successfully."})
+
+
+class CustomPasswordResetView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        print(request.data.get("email"))
+        try:
+            user = AppUser.objects.get(email=email)
+            print(user.email)
+        except AppUser.DoesNotExist:
+            return JsonResponse({"success": False, "message": "User with this email does not exist."})
+
+        token_generator = default_token_generator
+        token = token_generator.make_token(user)
+
+        reset_url = f"http://localhost:3000/change/password/{user.pk}/{token}/"
+
+        send_mail(
+            subject="Reset your password",
+            message=f"Click the following link to reset your password: {reset_url}",
+            from_email="conversechatapplication@gmail.com",
+            recipient_list=[user.email],
+        )
+        return JsonResponse({"success": True})
 
 
 class UserRegister(APIView):
