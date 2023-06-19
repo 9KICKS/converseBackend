@@ -41,7 +41,6 @@ class CustomPasswordResetView(APIView):
 
     def post(self, request):
         email = request.data.get('email')
-        print(request.data.get("email"))
         try:
             user = AppUser.objects.get(email=email)
             print(user.email)
