@@ -15,6 +15,16 @@ from django.contrib.auth.models import User
 from django.http import JsonResponse
 
 
+class UsersList(APIView):
+    permission_classes = (permissions.AllowAny,)
+    authentication_classes = (SessionAuthentication,)
+
+    def get(self, request, format=None):
+        users = AppUser.objects.all()
+        serializer = UserSerializer(users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class CustomPasswordChangeView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -43,7 +53,6 @@ class CustomPasswordResetView(APIView):
         email = request.data.get('email')
         try:
             user = AppUser.objects.get(email=email)
-            print(user.email)
         except AppUser.DoesNotExist:
             return JsonResponse({"success": False, "message": "User with this email does not exist."})
 
